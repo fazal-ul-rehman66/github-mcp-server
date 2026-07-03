@@ -1,6 +1,7 @@
 package github
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -40,22 +41,51 @@ func isAcceptedError(err error) bool {
 	return errors.As(err, &acceptedError)
 }
 
-// toInt converts a value to int, handling both float64 and string representations.
-// Some MCP clients send numeric values as strings. It rejects NaN, ±Inf,
-// fractional values, and values outside the int range.
-func toInt(val any) (int, error) {
-	var f float64
+// numericToFloat64 normalizes numeric tool arguments to float64.
+// MCP clients may send JSON numbers as float64 (default json.Unmarshal),
+// native integer types (e.g. mcpcurl integer flags), or strings.
+func numericToFloat64(val any) (float64, error) {
 	switch v := val.(type) {
 	case float64:
-		f = v
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint:
+		return float64(v), nil
+	case uint32:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
 	case string:
-		var err error
-		f, err = strconv.ParseFloat(v, 64)
+		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			return 0, fmt.Errorf("invalid numeric value: %s", v)
 		}
+		return f, nil
+	case json.Number:
+		f, err := v.Float64()
+		if err != nil {
+			return 0, fmt.Errorf("invalid numeric value: %s", v)
+		}
+		return f, nil
 	default:
 		return 0, fmt.Errorf("expected number, got %T", val)
+	}
+}
+
+// toInt converts a value to int, handling float64, integer, and string representations.
+// Some MCP clients send numeric values as strings or native integer types. It rejects
+// NaN, ±Inf, fractional values, and values outside the int range.
+func toInt(val any) (int, error) {
+	f, err := numericToFloat64(val)
+	if err != nil {
+		return 0, err
 	}
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return 0, fmt.Errorf("non-finite numeric value")
@@ -69,22 +99,13 @@ func toInt(val any) (int, error) {
 	return int(f), nil
 }
 
-// toInt64 converts a value to int64, handling both float64 and string representations.
-// Some MCP clients send numeric values as strings. It rejects NaN, ±Inf,
-// fractional values, and values that lose precision in the float64→int64 conversion.
+// toInt64 converts a value to int64, handling float64, integer, and string representations.
+// Some MCP clients send numeric values as strings or native integer types. It rejects
+// NaN, ±Inf, fractional values, and values that lose precision in the float64→int64 conversion.
 func toInt64(val any) (int64, error) {
-	var f float64
-	switch v := val.(type) {
-	case float64:
-		f = v
-	case string:
-		var err error
-		f, err = strconv.ParseFloat(v, 64)
-		if err != nil {
-			return 0, fmt.Errorf("invalid numeric value: %s", v)
-		}
-	default:
-		return 0, fmt.Errorf("expected number, got %T", val)
+	f, err := numericToFloat64(val)
+	if err != nil {
+		return 0, err
 	}
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return 0, fmt.Errorf("non-finite numeric value")

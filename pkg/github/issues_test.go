@@ -607,6 +607,20 @@ func Test_AddIssueComment(t *testing.T) {
 			expectedComment: mockComment,
 		},
 		{
+			name: "successful comment creation with int issue_number",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PostReposIssuesCommentsByOwnerByRepoByIssueNumber: mockResponse(t, http.StatusCreated, mockComment),
+			}),
+			requestArgs: map[string]any{
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": int(42),
+				"body":         "This is a test comment",
+			},
+			expectError:     false,
+			expectedComment: mockComment,
+		},
+		{
 			name: "comment creation fails",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				PostReposIssuesCommentsByOwnerByRepoByIssueNumber: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

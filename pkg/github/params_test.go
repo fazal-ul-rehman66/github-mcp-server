@@ -172,6 +172,20 @@ func Test_RequiredInt(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "valid int parameter",
+			params:      map[string]any{"count": int(42)},
+			paramName:   "count",
+			expected:    42,
+			expectError: false,
+		},
+		{
+			name:        "valid int64 parameter",
+			params:      map[string]any{"count": int64(42)},
+			paramName:   "count",
+			expected:    42,
+			expectError: false,
+		},
+		{
 			name:        "missing parameter",
 			params:      map[string]any{},
 			paramName:   "count",

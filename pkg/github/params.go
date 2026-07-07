@@ -12,7 +12,7 @@ import (
 
 // OptionalParamOK is a helper function that can be used to fetch a requested parameter from the request.
 // It returns the value, a boolean indicating if the parameter was present, and an error if the type is wrong.
-func OptionalParamOK[T any, A map[string]any](args A, p string) (value T, ok bool, err error) {
+func OptionalParamOK[T any](args map[string]any, p string) (value T, ok bool, err error) {
 	// Check if the parameter is present in the request
 	val, exists := args[p]
 	if !exists {
@@ -212,7 +212,8 @@ func OptionalIntParam(args map[string]any, p string) (int, error) {
 }
 
 // OptionalIntParamWithDefault is a helper function that can be used to fetch a requested parameter from the request
-// similar to optionalIntParam, but it also takes a default value.
+// similar to OptionalIntParam, but it also takes a default value.
+// If the parameter is not present or is zero, the default is returned.
 func OptionalIntParamWithDefault(args map[string]any, p string, d int) (int, error) {
 	v, err := OptionalIntParam(args, p)
 	if err != nil {
@@ -225,7 +226,7 @@ func OptionalIntParamWithDefault(args map[string]any, p string, d int) (int, err
 }
 
 // OptionalBoolParamWithDefault is a helper function that can be used to fetch a requested parameter from the request
-// similar to optionalBoolParam, but it also takes a default value.
+// similar to OptionalParam[bool], but it also takes a default value.
 func OptionalBoolParamWithDefault(args map[string]any, p string, d bool) (bool, error) {
 	_, ok := args[p]
 	v, err := OptionalParam[bool](args, p)
@@ -443,12 +444,23 @@ type pageInfo struct {
 }
 
 func buildPageInfo(resp *github.Response) pageInfo {
-	return pageInfo{
-		HasNextPage:     resp.After != "",
-		HasPreviousPage: resp.Before != "",
-		NextCursor:      resp.After,
-		PrevCursor:      resp.Before,
+	info := pageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: false,
 	}
+
+	if resp != nil {
+		if resp.After != "" {
+			info.HasNextPage = true
+			info.NextCursor = resp.After
+		}
+		if resp.Before != "" {
+			info.HasPreviousPage = true
+			info.PrevCursor = resp.Before
+		}
+	}
+
+	return info
 }
 
 // ToGraphQLParams converts cursor pagination parameters to GraphQL-specific parameters.

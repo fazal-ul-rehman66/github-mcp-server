@@ -179,6 +179,31 @@ func Test_GetIssue(t *testing.T) {
 			expectedIssue: mockIssue,
 		},
 		{
+			name: "successful issue retrieval with int issue_number",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				GetReposIssuesByOwnerByRepoByIssueNumber: mockResponse(t, http.StatusOK, mockIssue),
+			}),
+			requestArgs: map[string]any{
+				"method":       "get",
+				"owner":        "owner2",
+				"repo":         "repo2",
+				"issue_number": int(42),
+			},
+			expectedIssue: mockIssue,
+		},
+		{
+			name:         "invalid issue_number does not call API",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
+			requestArgs: map[string]any{
+				"method":       "get",
+				"owner":        "owner2",
+				"repo":         "repo2",
+				"issue_number": "not-a-number",
+			},
+			expectResultError: true,
+			expectedErrMsg:    "not a valid number",
+		},
+		{
 			name: "issue not found",
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				GetReposIssuesByOwnerByRepoByIssueNumber: mockResponse(t, http.StatusNotFound, `{"message": "Issue not found"}`),
@@ -619,6 +644,18 @@ func Test_AddIssueComment(t *testing.T) {
 			},
 			expectError:     false,
 			expectedComment: mockComment,
+		},
+		{
+			name:         "invalid issue_number does not call API",
+			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
+			requestArgs: map[string]any{
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": "not-a-number",
+				"body":         "This is a test comment",
+			},
+			expectError:    false,
+			expectedErrMsg: "not a valid number",
 		},
 		{
 			name: "comment creation fails",
@@ -2900,6 +2937,40 @@ func Test_UpdateIssue(t *testing.T) {
 			},
 			expectError:   false,
 			expectedIssue: mockUpdatedIssue,
+		},
+		{
+			name: "partial update with int issue_number",
+			mockedRESTClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
+				PatchReposIssuesByOwnerByRepoByIssueNumber: expectRequestBody(t, map[string]any{
+					"title": "Updated Title",
+				}).andThen(
+					mockResponse(t, http.StatusOK, mockUpdatedIssue),
+				),
+			}),
+			mockedGQLClient: githubv4mock.NewMockedHTTPClient(),
+			requestArgs: map[string]any{
+				"method":       "update",
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": int(123),
+				"title":        "Updated Title",
+			},
+			expectError:   false,
+			expectedIssue: mockUpdatedIssue,
+		},
+		{
+			name:             "invalid issue_number does not call API",
+			mockedRESTClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{}),
+			mockedGQLClient:  githubv4mock.NewMockedHTTPClient(),
+			requestArgs: map[string]any{
+				"method":       "update",
+				"owner":        "owner",
+				"repo":         "repo",
+				"issue_number": "not-a-number",
+				"title":        "Updated Title",
+			},
+			expectError:    true,
+			expectedErrMsg: "not a valid number",
 		},
 		{
 			name: "partial update clears labels and assignees",

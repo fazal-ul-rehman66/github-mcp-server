@@ -2202,3 +2202,57 @@ func TestGranularAddPullRequestReviewCommentReaction(t *testing.T) {
 		})
 	}
 }
+
+- [ // Lines 26-78: updatePullRequestDraftState function
+func updatePullRequestDraftState(ctx context.Context, deps ToolDependencies, owner, repo string, pullNumber int, draft bool) *mcp.CallToolResult {
+    // ✅ GOOD: Fetch current state first
+    pullRequest, getResp, err := client.PullRequests.Get(ctx, owner, repo, pullNumber)
+    
+    // ✅ GOOD: Explicit status code check (lines 38-44)
+    if getResp.StatusCode != http.StatusOK {
+        bodyBytes, err := io.ReadAll(getResp.Body)
+        return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to get pull request", getResp, bodyBytes)
+    }
+    
+    // ✅ GOOD: No-op optimization (lines 46-48)
+    if pullRequest.GetDraft() == draft {
+        return nil  // Early return, don't call action endpoint
+    }
+    
+    // ✅ GOOD: Explicit status code check on action (lines 69-75)
+    if actionResp.StatusCode != http.StatusOK {
+        bodyBytes, err := io.ReadAll(actionResp.Body)
+        return ghErrors.NewGitHubAPIStatusErrorResponse(ctx, "failed to"+actionName, actionResp, bodyBytes)
+    }
+} 
+
+1.// Uses old GraphQL matchers (githubv4mock)
+// Tests call GranularUpdatePullRequestDraftState but it now delegates to updatePullRequestDraftState
+
+2.func GranularUpdatePullRequestDraftState(...) {
+    // ...
+    if result := updatePullRequestDraftState(ctx, deps, owner, repo, pullNumber, draft); result != nil {
+        return result, nil, nil
+    }
+    // Returns success message
+
+1. }
+2.// Mock handlers ARE there (lines 1123-1140)
+GetReposPullsByOwnerByRepoByPullNumber: ...
+PostReposPullsByOwnerByRepoByPullNumberConvertToDraft: ...
+PostReposPullsByOwnerByRepoByPullNumberReadyForReview: ...
+_****<!DOCTYPE html>
+Error Handling | ✅ EXCELLENT | Properly checks HTTP status codes on both GET and POST
+-- | -- | --
+No-op Logic | ✅ CORRECT | Compares current state before calling endpoint
+Test Coverage | ⚠️ MISLEADING | Test structure suggests it's testing GraphQL, not REST
+Response Validation | ✅ PROPER | Reads and returns error body content
+Code Reuse | ✅ GOOD | updatePullRequestDraftStateshared between two call paths
+
+### The implementation correctly:
+
+Checks http.StatusOK before proceeding
+Handles no-op case (returns nil = success, no API call)
+Returns detailed error messages with response body content
+Works for 404 (PR not found) and 403 (permission denied)
+Properly delegates from granular to shared helper

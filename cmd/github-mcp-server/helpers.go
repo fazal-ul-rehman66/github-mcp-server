@@ -27,3 +27,5 @@ func formatToolsetName(name string) string {
 		return strings.Join(parts, " ")
 	}
 }
+script/lint
+script/test

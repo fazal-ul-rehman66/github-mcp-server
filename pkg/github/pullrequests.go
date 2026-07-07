@@ -2381,3 +2381,23 @@ func newGQLIntPtr(i *int32) *githubv4.Int {
 	gi := githubv4.Int(*i)
 	return &gi
 }
+// PROBLEM 1: This function needs to be properly placed (around line 26)
+func updatePullRequestDraftState(ctx context.Context, deps ToolDependencies, owner, repo string, pullNumber int, draft bool) *mcp.CallToolResult {
+    // Lines 26-78 from the diff
+    // ... implementation should go here
+}
+
+// PROBLEM 2: In UpdatePullRequest (line 1015-1078)
+// This section MUST be replaced with:
+if draftProvided {
+    if result := updatePullRequestDraftState(ctx, deps, owner, repo, pullNumber, draftValue); result != nil {
+        return result, nil, nil
+    }
+} 
+Without seeing the actual comments, the likely concerns are:
+
+Incomplete migration - GraphQL code wasn't fully removed
+Missing error handling - REST endpoints may need different error handling than GraphQL
+API compatibility - REST endpoints might not support all scenarios that GraphQL does
+Testing gaps - No visible test updates for the new REST-based approach
+Draft PR status - The PR is still in draft, suggesting the work isn't ready
